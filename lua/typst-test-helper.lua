@@ -64,7 +64,7 @@ local function get_test_at_cursor()
             goto continue
         end
         local next_test = tests[i + 1]
-        if next_test and next_test.line_idx > line_idx then
+        if not next_test or next_test.line_idx > line_idx then
             return test
         end
 
