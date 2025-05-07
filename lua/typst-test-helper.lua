@@ -42,7 +42,7 @@ local function update(buf)
         vim.api.nvim_buf_set_extmark(buf, ns, test.line_idx, 0, {
             virt_text_pos = "eol",
             virt_text = {
-                { "typst-test", "Function" },
+                { "[typst-test]", "Function" },
             },
         })
     end
