@@ -30,6 +30,7 @@ local function update(buf)
         if test_name then
             table.insert(tests, {
                 line_idx = line_nr - 1,
+                line_len = #line,
                 name = test_name,
             })
         end
@@ -37,15 +38,26 @@ local function update(buf)
 
     cache[buf] = tests
 
-    vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+    local diagnostics = {}
     for _, test in ipairs(tests) do
-        vim.api.nvim_buf_set_extmark(buf, ns, test.line_idx, 0, {
-            virt_text_pos = "eol",
-            virt_text = {
-                { "[typst-test]", "Function" },
-            },
+        table.insert(diagnostics, {
+            bufnr = buf,
+            lnum = test.line_idx,
+            col = 0,
+            end_col = test.line_len,
+            severity = vim.diagnostic.severity.HINT,
+            message = "[typst-test]"
         })
     end
+    vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+    local opts = {
+        signs = {
+            text = {
+                [vim.diagnostic.severity.HINT] = "T",
+            },
+        },
+    }
+    vim.diagnostic.set(ns, buf, diagnostics, opts)
 end
 
 ---@return Test?
