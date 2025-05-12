@@ -84,19 +84,6 @@ local function get_test_at_cursor()
     end
 end
 
-local function create_maps(buf, maps)
-    for _, map in ipairs(maps) do
-        local opts = {
-            buffer = buf,
-            remap = map.remap,
-            desc = map.desc,
-            callback = map.callback,
-            replace_keycodes = map.replace_keycodes,
-        }
-        vim.keymap.set("n", map[1], map[2], opts)
-    end
-end
-
 function M.open_identity()
     local current_test = get_test_at_cursor()
     if not current_test then
@@ -115,8 +102,8 @@ function M.setup(cfg)
         group = group,
         pattern = "tests/**/*.typ",
         callback = function(ev)
-            if cfg and cfg.maps then
-                create_maps(ev.buf, cfg.maps)
+            if cfg and cfg.on_attach then
+                cfg.on_attach(ev.buf)
             end
             update(ev.buf)
         end,
