@@ -2,7 +2,17 @@
 ---@field line_idx integer
 ---@field name string
 
+---@class Config
+---@field on_attach fun(buf: integer)
+---@field programs table<string,string[]>
+
 local M = {}
+
+local cfg = {
+    programs = {
+        identity = { "flatpak", "run", "--file-forwarding", "org.gnome.gitlab.YaLTeR.Identity", "@@" },
+    }
+}
 
 ---@type table<integer,Test>
 local cache = {}
@@ -84,7 +94,8 @@ local function get_test_at_cursor()
     end
 end
 
-function M.open_identity()
+---@param cmd string|string[]
+function M.open(cmd)
     local current_test = get_test_at_cursor()
     if not current_test then
         vim.notify("no typst test found at cursor location")
@@ -92,11 +103,25 @@ function M.open_identity()
     end
 
     local ref_path, live_path = image_paths(current_test.name)
-    local cmd = { "flatpak", "run", "--file-forwarding", "org.gnome.gitlab.YaLTeR.Identity", "@@", ref_path, live_path }
+
+    if type(cmd) == "string" then
+        cmd = vim.deepcopy(cfg.programs[cmd])
+    end
+    table.insert(cmd, ref_path)
+    table.insert(cmd, live_path)
     vim.system(cmd, { detach = true })
 end
 
-function M.setup(cfg)
+---@param cmd string|string[]
+function M.map_open(cmd)
+    return function()
+        M.open(cmd)
+    end
+end
+
+function M.setup(user_cfg)
+    cfg = vim.tbl_deep_extend('force', cfg, user_cfg)
+
     local group = vim.api.nvim_create_augroup("typst-test-helper", {})
     vim.api.nvim_create_autocmd("BufRead", {
         group = group,
