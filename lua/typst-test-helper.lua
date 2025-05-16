@@ -166,7 +166,21 @@ function M.setup(user_cfg)
             if cfg and cfg.on_attach then
                 cfg.on_attach(ev.buf)
             end
+        end,
+    })
+    vim.api.nvim_create_autocmd("BufEnter", {
+        group = group,
+        pattern = "tests/**/*.typ",
+        callback = function(ev)
             update(ev.buf)
+        end,
+    })
+    vim.api.nvim_create_autocmd("BufLeave", {
+        group = group,
+        pattern = "tests/**/*.typ",
+        callback = function(ev)
+            vim.api.nvim_buf_clear_namespace(ev.buf, ns, 0, -1)
+            vim.diagnostic.set(ns, ev.buf, {}, {})
         end,
     })
     vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI", "TextChangedP" }, {
