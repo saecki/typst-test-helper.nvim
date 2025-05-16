@@ -1,6 +1,9 @@
 ---@class Test
 ---@field line_idx integer
+---@field line_len integer
 ---@field name string
+---@field html boolean
+---@field render boolean
 
 ---@class Config
 ---@field on_attach fun(buf: integer)
@@ -36,34 +39,67 @@ local function update(buf)
 
     local tests = {}
     for line_nr, line in ipairs(lines) do
-        local test_name = line:match("^%-%-%- ([%d%w-]+) %-%-%-$")
-        if test_name then
-            table.insert(tests, {
-                line_idx = line_nr - 1,
-                line_len = #line,
-                name = test_name,
-            })
+        local test_name, attributes = line:match("^%-%-%- ([%d%w-]+)([%d%w%s-]-) %-%-%-$")
+        if not test_name then
+            goto continue
         end
+
+        local test = {
+            line_idx = line_nr - 1,
+            line_len = #line,
+            name = test_name,
+        }
+
+        -- parse test attributes
+        while attributes ~= "" do
+            local attr, end_pos = attributes:match("^ ([%d%w-]+)()")
+            if attr == "html" then
+                test.html = true
+            elseif attr == "render" then
+                test.render = true
+            else
+                goto continue
+            end
+            attributes = string.sub(attributes, end_pos)
+        end
+        if not test.html then
+            -- if no attribute is specified, default to render
+            test.render = true
+        end
+
+        table.insert(tests, test)
+
+        ::continue::
     end
 
     cache[buf] = tests
 
     local diagnostics = {}
     for _, test in ipairs(tests) do
+        local msg = ""
+        if test.html then
+            msg = msg .. "  "
+        end
+        if test.render then
+            msg = msg .. "  "
+        end
         table.insert(diagnostics, {
             bufnr = buf,
             lnum = test.line_idx,
             col = 0,
             end_col = test.line_len,
             severity = vim.diagnostic.severity.HINT,
-            message = "[typst-test]"
+            message = msg,
         })
     end
     vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
     local opts = {
+        virtual_text = {
+            prefix = "test",
+        },
         signs = {
             text = {
-                [vim.diagnostic.severity.HINT] = "T",
+                [vim.diagnostic.severity.HINT] = "",
             },
         },
     }
