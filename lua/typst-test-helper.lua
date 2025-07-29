@@ -3,6 +3,7 @@
 ---@field line_len integer
 ---@field name string
 ---@field html boolean
+---@field pdftags boolean
 ---@field render boolean
 
 ---@class Config
@@ -55,6 +56,8 @@ local function update(buf)
             local attr, end_pos = attributes:match("^ ([%d%w-]+)()")
             if attr == "html" then
                 test.html = true
+            elseif attr == "pdftags" then
+                test.pdftags = true
             elseif attr == "render" then
                 test.render = true
             else
@@ -79,6 +82,9 @@ local function update(buf)
         local msg = ""
         if test.html then
             msg = msg .. "  "
+        end
+        if test.pdftags then
+            msg = msg .. " "
         end
         if test.render then
             msg = msg .. "  "
