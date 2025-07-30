@@ -23,6 +23,25 @@ local cache = {}
 
 local ns = vim.api.nvim_create_namespace("typst-test-helper")
 
+
+local term_win = nil
+---@param name string
+---@param opts {update:boolean?}
+local function run_test(name, opts)
+    local cmd = { "cargo", "test", "--workspace", "--test=tests", "--", name }
+    if opts.update then
+        table.insert(cmd, "--update")
+    end
+
+    if term_win and vim.api.nvim_win_is_valid(term_win) then
+        vim.api.nvim_set_current_win(term_win)
+    else
+        vim.cmd.split()
+        term_win = vim.api.nvim_get_current_win()
+    end
+    vim.cmd.term(cmd)
+end
+
 ---@param name string
 ---@return string
 ---@return string
@@ -223,6 +242,26 @@ function M.open_pdftags()
 
     local ref_path, live_path = pdftags_paths(current_test.name)
     open_diff(ref_path, live_path)
+end
+
+function M.run_test()
+    local current_test = get_test_at_cursor()
+    if not current_test then
+        vim.notify("no typst test found at cursor location")
+        return
+    end
+
+    run_test(current_test.name, {})
+end
+
+function M.update_ref()
+    local current_test = get_test_at_cursor()
+    if not current_test then
+        vim.notify("no typst test found at cursor location")
+        return
+    end
+
+    run_test(current_test.name, { update = true })
 end
 
 function M.setup(user_cfg)
