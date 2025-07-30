@@ -18,13 +18,16 @@ local cfg = {
     }
 }
 
----@type table<integer,Test>
-local cache = {}
 
 local ns = vim.api.nvim_create_namespace("typst-test-helper")
 
-
+---@type table<integer,Test>
+local cache = {}
+---@type integer?
 local term_win = nil
+---@type integer?
+local diff_win = nil
+
 ---@param name string
 ---@param opts {update:boolean?}
 local function run_test(name, opts)
@@ -174,15 +177,26 @@ local function get_test_at_cursor()
     end
 end
 
+---@return Test?
+local function require_test_at_cursor()
+    local test = get_test_at_cursor()
+    if test then
+        return test
+    end
+    vim.notify("no typst test found at cursor location")
+end
+
 ---@param cmd string|string[]
 function M.open_render(cmd)
-    local current_test = get_test_at_cursor()
-    if not current_test then
-        vim.notify("no typst test found at cursor location")
+    local test = require_test_at_cursor()
+    if not test then return end
+
+    if (test.html or test.pdftags) and not test.render then
+        vim.notify("not a rendered test")
         return
     end
 
-    local ref_path, live_path = image_paths(current_test.name)
+    local ref_path, live_path = image_paths(test.name)
 
     if type(cmd) == "string" then
         cmd = vim.deepcopy(cfg.programs[cmd])
@@ -199,8 +213,6 @@ function M.map_open_render(cmd)
     end
 end
 
----@type integer?
-local diff_win = nil
 ---@param ref_path string
 ---@param live_path string
 local function open_diff(ref_path, live_path)
@@ -223,45 +235,43 @@ local function open_diff(ref_path, live_path)
 end
 
 function M.open_html()
-    local current_test = get_test_at_cursor()
-    if not current_test then
-        vim.notify("no typst test found at cursor location")
+    local test = require_test_at_cursor()
+    if not test then return end
+
+    if not test.html then
+        vim.notify("no `html` attribute")
         return
     end
 
-    local ref_path, live_path = html_paths(current_test.name)
+    local ref_path, live_path = html_paths(test.name)
     open_diff(ref_path, live_path)
 end
 
 function M.open_pdftags()
-    local current_test = get_test_at_cursor()
-    if not current_test then
-        vim.notify("no typst test found at cursor location")
+    local test = require_test_at_cursor()
+    if not test then return end
+
+    if not test.pdftags then
+        vim.notify("no `pdftags` attribute")
         return
     end
 
-    local ref_path, live_path = pdftags_paths(current_test.name)
+    local ref_path, live_path = pdftags_paths(test.name)
     open_diff(ref_path, live_path)
 end
 
 function M.run_test()
-    local current_test = get_test_at_cursor()
-    if not current_test then
-        vim.notify("no typst test found at cursor location")
-        return
-    end
+    local test = require_test_at_cursor()
+    if not test then return end
 
-    run_test(current_test.name, {})
+    run_test(test.name, {})
 end
 
 function M.update_ref()
-    local current_test = get_test_at_cursor()
-    if not current_test then
-        vim.notify("no typst test found at cursor location")
-        return
-    end
+    local test = require_test_at_cursor()
+    if not test then return end
 
-    run_test(current_test.name, { update = true })
+    run_test(test.name, { update = true })
 end
 
 function M.setup(user_cfg)
