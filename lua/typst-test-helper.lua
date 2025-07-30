@@ -30,7 +30,26 @@ local function image_paths(name)
     local root_dir = vim.fs.root(0, ".git")
     local ref_path = vim.fs.joinpath(root_dir, string.format("tests/ref/%s.png", name))
     local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/render/%s.png", name))
+    return ref_path, live_path
+end
 
+---@param name string
+---@return string
+---@return string
+local function html_paths(name)
+    local root_dir = vim.fs.root(0, ".git")
+    local ref_path = vim.fs.joinpath(root_dir, string.format("tests/ref/html/%s.html", name))
+    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/html/%s.html", name))
+    return ref_path, live_path
+end
+
+---@param name string
+---@return string
+---@return string
+local function pdftags_paths(name)
+    local root_dir = vim.fs.root(0, ".git")
+    local ref_path = vim.fs.joinpath(root_dir, string.format("tests/ref/pdftags/%s.yml", name))
+    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/pdftags/%s.yml", name))
     return ref_path, live_path
 end
 
@@ -137,7 +156,7 @@ local function get_test_at_cursor()
 end
 
 ---@param cmd string|string[]
-function M.open(cmd)
+function M.open_render(cmd)
     local current_test = get_test_at_cursor()
     if not current_test then
         vim.notify("no typst test found at cursor location")
@@ -155,10 +174,55 @@ function M.open(cmd)
 end
 
 ---@param cmd string|string[]
-function M.map_open(cmd)
+function M.map_open_render(cmd)
     return function()
-        M.open(cmd)
+        M.open_render(cmd)
     end
+end
+
+---@type integer?
+local diff_win = nil
+---@param ref_path string
+---@param live_path string
+local function open_diff(ref_path, live_path)
+    vim.cmd.diffoff({ bang = true })
+
+    local cur_win = vim.api.nvim_get_current_win()
+    vim.cmd.edit(ref_path)
+    vim.cmd.diffthis()
+
+    if diff_win and vim.api.nvim_win_is_valid(diff_win) then
+        vim.api.nvim_set_current_win(diff_win)
+        vim.cmd.edit(live_path)
+        vim.cmd.diffthis()
+    else
+        vim.cmd.vsplit(live_path)
+        vim.cmd.diffthis()
+        diff_win = vim.api.nvim_get_current_win()
+    end
+    vim.api.nvim_set_current_win(cur_win)
+end
+
+function M.open_html()
+    local current_test = get_test_at_cursor()
+    if not current_test then
+        vim.notify("no typst test found at cursor location")
+        return
+    end
+
+    local ref_path, live_path = html_paths(current_test.name)
+    open_diff(ref_path, live_path)
+end
+
+function M.open_pdftags()
+    local current_test = get_test_at_cursor()
+    if not current_test then
+        vim.notify("no typst test found at cursor location")
+        return
+    end
+
+    local ref_path, live_path = pdftags_paths(current_test.name)
+    open_diff(ref_path, live_path)
 end
 
 function M.setup(user_cfg)
