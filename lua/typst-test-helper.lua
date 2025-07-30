@@ -106,7 +106,7 @@ local function update(buf)
             end
             attributes = string.sub(attributes, end_pos)
         end
-        if not test.html then
+        if not (test.html or test.pdftags) then
             -- if no attribute is specified, default to render
             test.render = true
         end
@@ -191,7 +191,7 @@ function M.open_render(cmd)
     local test = require_test_at_cursor()
     if not test then return end
 
-    if (test.html or test.pdftags) and not test.render then
+    if not test.render then
         vim.notify("not a rendered test")
         return
     end
