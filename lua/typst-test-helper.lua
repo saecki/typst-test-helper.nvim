@@ -31,7 +31,7 @@ local diff_win = nil
 ---@param name string
 ---@param opts {update:boolean?}
 local function run_test(name, opts)
-    local cmd = { "cargo", "test", "--workspace", "--test=tests", "--", name }
+    local cmd = { "cargo", "test", "--workspace", "--test=tests", "--", "--exact", name }
     if opts.update then
         table.insert(cmd, "--update")
     end
