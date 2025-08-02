@@ -21,7 +21,7 @@ tth.setup({
     programs = {
         -- Define custom commands to open two images in an external program.
         -- The two image paths will be appended to the command.
-        my_program = { "my-program", "--some-option", "--split-view" },
+        ["my-program"] = { "my-program", "--some-option", "--split-view" },
     },
 })
 
