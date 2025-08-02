@@ -1,5 +1,8 @@
 # typst-test-helper.nvim
 
+A neovim plugin that helps managing the [typst](https://github.com/typst/typst) test suite.\
+<sup>This is mainly interesting for contributors of typst</sup>
+
 ## Setup
 
 ```lua
