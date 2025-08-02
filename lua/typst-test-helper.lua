@@ -101,6 +101,8 @@ local function update(buf)
                 test.pdftags = true
             elseif attr == "render" then
                 test.render = true
+            elseif attr == "large" then
+                -- ignored for now
             else
                 goto continue
             end
