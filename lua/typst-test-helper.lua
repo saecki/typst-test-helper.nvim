@@ -29,12 +29,9 @@ local term_win = nil
 local diff_win = nil
 
 ---@param name string
----@param opts {update:boolean?}
-local function run_test(name, opts)
-    local cmd = { "cargo", "test", "--workspace", "--test=tests", "--", "--exact", name }
-    if opts.update then
-        table.insert(cmd, "--update")
-    end
+---@param args string[]
+local function run_test(name, args)
+    local cmd = { "cargo", "test", "--workspace", "--test=tests", "--", "--exact", name, unpack(args) }
 
     if term_win and vim.api.nvim_win_is_valid(term_win) then
         vim.api.nvim_set_current_win(term_win)
@@ -262,18 +259,20 @@ function M.open_pdftags()
     open_diff(ref_path, live_path)
 end
 
-function M.run_test()
+---@param args string[]?
+function M.run_test(args)
     local test = require_test_at_cursor()
     if not test then return end
 
-    run_test(test.name, {})
+    run_test(test.name, args or {})
 end
 
-function M.update_ref()
-    local test = require_test_at_cursor()
-    if not test then return end
-
-    run_test(test.name, { update = true })
+---@param args string[]
+---@return fun()
+function M.map_run_test(args)
+    return function()
+        M.run_test(args or {})
+    end
 end
 
 function M.setup(user_cfg)
