@@ -275,6 +275,92 @@ function M.map_run_test(args)
     end
 end
 
+local cli_args = {
+    "--update",
+    "--scale=",
+    "--extended",
+    "--pdf",
+    "--svg",
+    "--syntax",
+    "--compact",
+    "--verbose",
+    "--parser-compare=",
+}
+
+---@param arglead string
+---@param line string
+---@return string[]
+local function complete_command(arglead, line)
+    local words = vim.iter(vim.split(line, "%s+"))
+    words:next()
+
+    local cmd = words:next()
+    if cmd == nil then
+        return {}
+    end
+
+    local args = words:totable()
+    if #args == 0 then
+        local cmds = {
+            "run-test",
+            "open-render",
+            "open-html",
+            "open-pdftags",
+        }
+        return vim.iter(cmds)
+            :filter(function(c) return vim.startswith(c, arglead) end)
+            :totable()
+    end
+
+    if cmd == "run-test" then
+        return vim.iter(cli_args)
+            :filter(function(arg) return vim.startswith(arg, arglead) end)
+            :filter(function(arg) return not vim.tbl_contains(args, arg) end)
+            :totable()
+    elseif cmd == "open-render" then
+        if #args == 1 then
+            return vim.iter(cfg.programs)
+                :map(function(prg, _) return prg end)
+                :filter(function(prg) return vim.startswith(prg, arglead) end)
+                :totable()
+        end
+    end
+
+    return {}
+end
+
+---@param params table<string,any>
+local function exec_command(params)
+    local words = vim.iter(vim.split(params.args, "%s+"))
+
+    local cmd = words:next()
+    if cmd == nil then
+        print(string.format("missing sub command"))
+        return
+    end
+
+    if cmd == "run-test" then
+        local args = words:totable()
+        M.run_test(args)
+    elseif cmd == "open-render" then
+        local prg = words:next()
+        if not cfg.programs[prg] then
+            print(string.format("invalid program `%s`", prg))
+            return
+        end
+        M.open_render(prg)
+    elseif cmd == "open-html" then
+        M.open_html()
+    elseif cmd == "open-pdftags" then
+        M.open_pdftags()
+    else
+        print(string.format("unknown sub command `%s`", cmd))
+    end
+end
+
+function M.register()
+end
+
 function M.setup(user_cfg)
     cfg = vim.tbl_deep_extend('force', cfg, user_cfg)
 
@@ -309,6 +395,12 @@ function M.setup(user_cfg)
         callback = function(ev)
             update(ev.buf)
         end,
+    })
+
+    vim.api.nvim_create_user_command("TypstTest", exec_command, {
+        nargs = 1,
+        range = true,
+        complete = complete_command,
     })
 end
 

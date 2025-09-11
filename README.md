@@ -31,3 +31,7 @@ tth.setup({
 -- Your custom command can then be used like this.
 tth.open_render("my-program")
 ```
+
+## Command
+This plugin adds the `:TypstTest` command.
+Use the command line completion to get a list of commands and options.
