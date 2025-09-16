@@ -28,10 +28,9 @@ local term_win = nil
 ---@type integer?
 local diff_win = nil
 
----@param name string
----@param args string[]
-local function run_test(name, args)
-    local cmd = { "cargo", "test", "--workspace", "--test=tests", "--", "--exact", name, unpack(args) }
+---@param ... string
+local function run_test(...)
+    local cmd = { "cargo", "test", "--workspace", "--test=tests", "--", ... }
 
     if term_win and vim.api.nvim_win_is_valid(term_win) then
         vim.api.nvim_set_current_win(term_win)
@@ -264,14 +263,19 @@ function M.run_test(args)
     local test = require_test_at_cursor()
     if not test then return end
 
-    run_test(test.name, args or {})
+    run_test("--exact", test.name, unpack(args or {}))
 end
 
----@param args string[]
+---@param args string[]?
+function M.run_all_tests(args)
+    run_test(unpack(args or {}))
+end
+
+---@param args string[]?
 ---@return fun()
 function M.map_run_test(args)
     return function()
-        M.run_test(args or {})
+        M.run_test(args)
     end
 end
 
@@ -303,6 +307,7 @@ local function complete_command(arglead, line)
     if #args == 0 then
         local cmds = {
             "run-test",
+            "run-all-tests",
             "open-render",
             "open-html",
             "open-pdftags",
@@ -313,6 +318,11 @@ local function complete_command(arglead, line)
     end
 
     if cmd == "run-test" then
+        return vim.iter(cli_args)
+            :filter(function(arg) return vim.startswith(arg, arglead) end)
+            :filter(function(arg) return not vim.tbl_contains(args, arg) end)
+            :totable()
+    elseif cmd == "run-all-test" then
         return vim.iter(cli_args)
             :filter(function(arg) return vim.startswith(arg, arglead) end)
             :filter(function(arg) return not vim.tbl_contains(args, arg) end)
@@ -342,6 +352,9 @@ local function exec_command(params)
     if cmd == "run-test" then
         local args = words:totable()
         M.run_test(args)
+    elseif cmd == "run-all-tests" then
+        local args = words:totable()
+        M.run_all_tests(args)
     elseif cmd == "open-render" then
         local prg = words:next()
         if not cfg.programs[prg] then
