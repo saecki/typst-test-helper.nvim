@@ -27,9 +27,13 @@ local cache = {}
 local term_win = nil
 ---@type integer?
 local diff_win = nil
+---@type string[]
+local last_test_args = nil
 
 ---@param ... string
 local function run_test(...)
+    last_test_args = { ... }
+
     local cmd = { "cargo", "test", "--workspace", "--test=tests", "--", ... }
 
     if term_win and vim.api.nvim_win_is_valid(term_win) then
@@ -271,6 +275,14 @@ function M.run_all_tests(args)
     run_test(unpack(args or {}))
 end
 
+function M.run_last_test()
+    if not last_test_args then
+        vim.notify("no last test")
+        return
+    end
+    run_test(unpack(last_test_args))
+end
+
 ---@param args string[]?
 ---@return fun()
 function M.map_run_test(args)
@@ -308,6 +320,7 @@ local function complete_command(arglead, line)
         local cmds = {
             "run-test",
             "run-all-tests",
+            "run-last-test",
             "open-render",
             "open-html",
             "open-pdftags",
@@ -327,6 +340,8 @@ local function complete_command(arglead, line)
             :filter(function(arg) return vim.startswith(arg, arglead) end)
             :filter(function(arg) return not vim.tbl_contains(args, arg) end)
             :totable()
+    elseif cmd == "run-last-test" then
+        return {}
     elseif cmd == "open-render" then
         if #args == 1 then
             return vim.iter(cfg.programs)
@@ -355,6 +370,8 @@ local function exec_command(params)
     elseif cmd == "run-all-tests" then
         local args = words:totable()
         M.run_all_tests(args)
+    elseif cmd == "run-last-test" then
+        M.run_last_test()
     elseif cmd == "open-render" then
         local prg = words:next()
         if not cfg.programs[prg] then
