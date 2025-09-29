@@ -2,9 +2,15 @@
 ---@field line_idx integer
 ---@field line_len integer
 ---@field name string
----@field html boolean
----@field pdftags boolean
----@field render boolean
+---@field html boolean?
+---@field pdftags boolean?
+---@field render boolean?
+---@field errors Error[]
+
+---@class Error
+---@field msg string
+---@field start_col integer
+---@field end_col integer
 
 ---@class Config
 ---@field on_attach fun(buf: integer)
@@ -20,8 +26,9 @@ local cfg = {
 
 
 local ns = vim.api.nvim_create_namespace("typst-test-helper")
+local diag_ns = vim.api.nvim_create_namespace("typst-test-helper.diagnostic")
 
----@type table<integer,Test>
+---@type table<integer,Test[]>
 local cache = {}
 ---@type integer?
 local term_win = nil
@@ -79,34 +86,48 @@ end
 local function update(buf)
     local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
 
+    ---@type Test[]
     local tests = {}
     for line_nr, line in ipairs(lines) do
-        local test_name, attributes = line:match("^%-%-%- ([%d%w-]+)([%d%w%s-]-) %-%-%-$")
+        local test_name, attrs_col, attrs = line:match("^%-%-%- ([%d%w-]+)()([%d%w%s-]-) %-%-%-$")
         if not test_name then
             goto continue
         end
 
+        ---@type Test
         local test = {
             line_idx = line_nr - 1,
             line_len = #line,
             name = test_name,
+            errors = {},
         }
 
         -- parse test attributes
-        while attributes ~= "" do
-            local attr, end_pos = attributes:match("^ ([%d%w-]+)()")
-            if attr == "html" then
+        local col = attrs_col - 1
+        while attrs ~= "" do
+            local attr, end_pos = attrs:match("^ ([%d%w-]+)()")
+            -- 1-based things...
+            local end_col = col + end_pos - 1
+
+            if attr == "render" then
+                test.render = true
+            elseif attr == "html" then
                 test.html = true
             elseif attr == "pdftags" then
                 test.pdftags = true
-            elseif attr == "render" then
-                test.render = true
             elseif attr == "large" then
                 -- ignored for now
+            elseif attr == "nopdfua" then
+                -- ignored for now
             else
-                goto continue
+                table.insert(test.errors, {
+                    msg = string.format("unknown attribute `%s`", attr),
+                    start_col = col + 1,
+                    end_col = end_col,
+                })
             end
-            attributes = string.sub(attributes, end_pos)
+            attrs = string.sub(attrs, end_pos)
+            col = end_col
         end
         if not (test.html or test.pdftags) then
             -- if no attribute is specified, default to render
@@ -120,39 +141,48 @@ local function update(buf)
 
     cache[buf] = tests
 
+    vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+
     local diagnostics = {}
     for _, test in ipairs(tests) do
-        local msg = ""
+        local msg = "test"
+        if test.render then
+            msg = msg .. "  "
+        end
         if test.html then
-            msg = msg .. "  "
+            msg = msg .. "  "
         end
         if test.pdftags then
-            msg = msg .. " "
+            msg = msg .. "  "
         end
-        if test.render then
-            msg = msg .. "  "
-        end
-        table.insert(diagnostics, {
-            bufnr = buf,
-            lnum = test.line_idx,
-            col = 0,
+
+        vim.api.nvim_buf_set_extmark(buf, ns, test.line_idx, 0, {
             end_col = test.line_len,
-            severity = vim.diagnostic.severity.HINT,
-            message = msg,
-        })
-    end
-    vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-    local opts = {
-        virtual_text = {
-            prefix = "test",
-        },
-        signs = {
-            text = {
-                [vim.diagnostic.severity.HINT] = "",
+            hl_group = "PreProc",
+            sign_text = "",
+            sign_hl_group = "PreProc",
+            virt_text = {
+                { msg, "PreProc" }
             },
-        },
-    }
-    vim.diagnostic.set(ns, buf, diagnostics, opts)
+            virt_text_pos = "eol",
+            -- Make sure the virtual text isn't shifted by diagnostics
+            priority = 101,
+        })
+
+        for _,error in ipairs(test.errors) do
+            table.insert(diagnostics, {
+                bufnr = buf,
+                lnum = test.line_idx,
+                col = error.start_col,
+                end_col = error.end_col,
+                severity = vim.diagnostic.severity.ERROR,
+                message = error.msg,
+            })
+        end
+    end
+
+    vim.api.nvim_buf_clear_namespace(buf, diag_ns, 0, -1)
+    vim.diagnostic.set(diag_ns, buf, diagnostics, {})
 end
 
 ---@return Test?
@@ -415,8 +445,8 @@ function M.setup(user_cfg)
         group = group,
         pattern = "tests/**/*.typ",
         callback = function(ev)
-            vim.api.nvim_buf_clear_namespace(ev.buf, ns, 0, -1)
-            vim.diagnostic.set(ns, ev.buf, {}, {})
+            vim.api.nvim_buf_clear_namespace(ev.buf, diag_ns, 0, -1)
+            vim.diagnostic.set(diag_ns, ev.buf, {}, {})
         end,
     })
     vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI", "TextChangedP" }, {
