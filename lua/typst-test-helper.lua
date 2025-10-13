@@ -106,6 +106,10 @@ local function update(buf)
         local col = attrs_col - 1
         while attrs ~= "" do
             local attr, end_pos = attrs:match("^ ([%d%w-]+)()")
+            if not attr then
+                break
+            end
+
             -- 1-based things...
             local end_col = col + end_pos - 1
 
@@ -169,7 +173,7 @@ local function update(buf)
             priority = 101,
         })
 
-        for _,error in ipairs(test.errors) do
+        for _, error in ipairs(test.errors) do
             table.insert(diagnostics, {
                 bufnr = buf,
                 lnum = test.line_idx,
