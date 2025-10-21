@@ -297,7 +297,7 @@ function M.open_pdftags()
 end
 
 ---@param args string[]?
-function M.run_test(args)
+function M.run(args)
     local test = require_test_at_cursor()
     if not test then return end
 
@@ -305,11 +305,11 @@ function M.run_test(args)
 end
 
 ---@param args string[]?
-function M.run_all_tests(args)
+function M.run_all(args)
     run_test(unpack(args or {}))
 end
 
-function M.run_last_test()
+function M.run_last()
     if not last_test_args then
         vim.notify("no last test")
         return
@@ -319,9 +319,9 @@ end
 
 ---@param args string[]?
 ---@return fun()
-function M.map_run_test(args)
+function M.map_run(args)
     return function()
-        M.run_test(args)
+        M.run(args)
     end
 end
 
@@ -352,9 +352,9 @@ local function complete_command(arglead, line)
     local args = words:totable()
     if #args == 0 then
         local cmds = {
-            "run-test",
-            "run-all-tests",
-            "run-last-test",
+            "run",
+            "run-all",
+            "run-last",
             "open-render",
             "open-html",
             "open-pdftags",
@@ -398,14 +398,14 @@ local function exec_command(params)
         return
     end
 
-    if cmd == "run-test" then
+    if cmd == "run" then
         local args = words:totable()
-        M.run_test(args)
-    elseif cmd == "run-all-tests" then
+        M.run(args)
+    elseif cmd == "run-all" then
         local args = words:totable()
-        M.run_all_tests(args)
-    elseif cmd == "run-last-test" then
-        M.run_last_test()
+        M.run_all(args)
+    elseif cmd == "run-last" then
+        M.run_last()
     elseif cmd == "open-render" then
         local prg = words:next()
         if not cfg.programs[prg] then
