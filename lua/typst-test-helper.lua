@@ -2,9 +2,9 @@
 ---@field line_idx integer
 ---@field line_len integer
 ---@field name string
+---@field paged boolean?
 ---@field html boolean?
 ---@field pdftags boolean?
----@field render boolean?
 ---@field errors Error[]
 
 ---@class Error
@@ -57,7 +57,7 @@ end
 ---@return string
 local function image_paths(name)
     local root_dir = vim.fs.root(0, ".git")
-    local ref_path = vim.fs.joinpath(root_dir, string.format("tests/ref/%s.png", name))
+    local ref_path = vim.fs.joinpath(root_dir, string.format("tests/ref/render/%s.png", name))
     local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/render/%s.png", name))
     return ref_path, live_path
 end
@@ -89,7 +89,7 @@ local function update(buf)
     ---@type Test[]
     local tests = {}
     for line_nr, line in ipairs(lines) do
-        local test_name, attrs_col, attrs = line:match("^%-%-%- ([%d%w-]+)()([%d%w%s-]-) %-%-%-$")
+        local test_name, attrs_col, attrs = line:match("^%-%-%- ([%d%w-]+)()([%d%w%s-%(%)]-) %-%-%-$")
         if not test_name then
             goto continue
         end
@@ -113,17 +113,15 @@ local function update(buf)
             -- 1-based things...
             local end_col = col + end_pos - 1
 
-            if attr == "render" then
-                test.render = true
+            if attr == "paged" then
+                test.paged = true
             elseif attr == "html" then
                 test.html = true
             elseif attr == "pdftags" then
                 test.pdftags = true
+            elseif attr == "pdfstandard" then
+                -- ignored for now
             elseif attr == "large" then
-                -- ignored for now
-            elseif attr == "nopdfua" then
-                -- ignored for now
-            elseif attr == "nocrash" then
                 -- ignored for now
             else
                 table.insert(test.errors, {
@@ -134,10 +132,14 @@ local function update(buf)
             end
             attrs = string.sub(attrs, end_pos)
             col = end_col
-        end
-        if not (test.html or test.pdftags) then
-            -- if no attribute is specified, default to render
-            test.render = true
+
+            local end_pos attrs:match("^%(.*%)()")
+            if end_pos then
+                -- 1-based things...
+                local end_col = col + end_pos - 1
+                attrs = string.sub(attrs, end_pos)
+                col = end_col
+            end
         end
 
         table.insert(tests, test)
@@ -152,8 +154,8 @@ local function update(buf)
     local diagnostics = {}
     for _, test in ipairs(tests) do
         local msg = "test"
-        if test.render then
-            msg = msg .. "  "
+        if test.paged then
+            msg = msg .. "  "
         end
         if test.html then
             msg = msg .. "  "
