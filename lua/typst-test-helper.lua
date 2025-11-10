@@ -231,11 +231,6 @@ function M.open_render(cmd)
     local test = require_test_at_cursor()
     if not test then return end
 
-    if not test.render then
-        vim.notify("not a rendered test")
-        return
-    end
-
     local ref_path, live_path = image_paths(test.name)
 
     if type(cmd) == "string" then
@@ -278,11 +273,6 @@ function M.open_html()
     local test = require_test_at_cursor()
     if not test then return end
 
-    if not test.html then
-        vim.notify("no `html` attribute")
-        return
-    end
-
     local ref_path, live_path = html_paths(test.name)
     open_diff(ref_path, live_path)
 end
@@ -290,11 +280,6 @@ end
 function M.open_pdftags()
     local test = require_test_at_cursor()
     if not test then return end
-
-    if not test.pdftags then
-        vim.notify("no `pdftags` attribute")
-        return
-    end
 
     local ref_path, live_path = pdftags_paths(test.name)
     open_diff(ref_path, live_path)
