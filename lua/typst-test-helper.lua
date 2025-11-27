@@ -33,7 +33,7 @@ local cache = {}
 ---@type integer?
 local term_win = nil
 ---@type integer?
-local diff_win = nil
+local split_win = nil
 ---@type string[]
 local last_test_args = nil
 
@@ -80,6 +80,14 @@ local function pdftags_paths(name)
     local ref_path = vim.fs.joinpath(root_dir, string.format("tests/ref/pdftags/%s.yml", name))
     local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/pdftags/%s.yml", name))
     return ref_path, live_path
+end
+
+---@param name string
+---@return string
+local function svg_path(name)
+    local root_dir = vim.fs.root(0, ".git")
+    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/svg/%s.svg", name))
+    return live_path
 end
 
 ---@param buf integer
@@ -133,10 +141,10 @@ local function update(buf)
             attrs = string.sub(attrs, end_pos)
             col = end_col
 
-            local end_pos attrs:match("^%(.*%)()")
+            end_pos = attrs:match("^%(.*%)()")
             if end_pos then
                 -- 1-based things...
-                local end_col = col + end_pos - 1
+                end_col = col + end_pos - 1
                 attrs = string.sub(attrs, end_pos)
                 col = end_col
             end
@@ -248,6 +256,17 @@ function M.map_open_render(cmd)
     end
 end
 
+---@param path string
+local function open_split(path)
+    if split_win and vim.api.nvim_win_is_valid(split_win) then
+        vim.api.nvim_set_current_win(split_win)
+        vim.cmd.edit(path)
+    else
+        vim.cmd.vsplit(path)
+        split_win = vim.api.nvim_get_current_win()
+    end
+end
+
 ---@param ref_path string
 ---@param live_path string
 local function open_diff(ref_path, live_path)
@@ -257,15 +276,8 @@ local function open_diff(ref_path, live_path)
     vim.cmd.edit(ref_path)
     vim.cmd.diffthis()
 
-    if diff_win and vim.api.nvim_win_is_valid(diff_win) then
-        vim.api.nvim_set_current_win(diff_win)
-        vim.cmd.edit(live_path)
-        vim.cmd.diffthis()
-    else
-        vim.cmd.vsplit(live_path)
-        vim.cmd.diffthis()
-        diff_win = vim.api.nvim_get_current_win()
-    end
+    open_split(live_path)
+    vim.cmd.diffthis()
     vim.api.nvim_set_current_win(cur_win)
 end
 
@@ -283,6 +295,14 @@ function M.open_pdftags()
 
     local ref_path, live_path = pdftags_paths(test.name)
     open_diff(ref_path, live_path)
+end
+
+function M.open_svg()
+    local test = require_test_at_cursor()
+    if not test then return end
+
+    local live_path = svg_path(test.name)
+    open_split(live_path)
 end
 
 ---@param args string[]?
@@ -347,6 +367,7 @@ local function complete_command(arglead, line)
             "open-render",
             "open-html",
             "open-pdftags",
+            "open-svg",
         }
         return vim.iter(cmds)
             :filter(function(c) return vim.startswith(c, arglead) end)
@@ -406,6 +427,8 @@ local function exec_command(params)
         M.open_html()
     elseif cmd == "open-pdftags" then
         M.open_pdftags()
+    elseif cmd == "open-svg" then
+        M.open_svg()
     else
         print(string.format("unknown sub command `%s`", cmd))
     end
