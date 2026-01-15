@@ -121,7 +121,9 @@ local function update(buf)
             -- 1-based things...
             local end_col = col + end_pos - 1
 
-            if attr == "paged" then
+            if attr == "eval" then
+                test.eval = true
+            elseif attr == "paged" then
                 test.paged = true
             elseif attr == "html" then
                 test.html = true
