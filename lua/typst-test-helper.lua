@@ -127,6 +127,8 @@ local function update(buf)
                 test.paged = true
             elseif attr == "html" then
                 test.html = true
+            elseif attr == "pdf" then
+                test.pdf = true
             elseif attr == "pdftags" then
                 test.pdftags = true
             elseif attr == "pdfstandard" then
