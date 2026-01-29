@@ -38,7 +38,7 @@ local split_win = nil
 local last_test_args = nil
 
 ---@param ... string
-local function run_test(...)
+local function run_testit(...)
     last_test_args = { ... }
 
     local cmd = { "cargo", "test", "--workspace", "--test=tests", "--", ... }
@@ -313,15 +313,15 @@ end
 
 ---@param args string[]?
 function M.run(args)
-    local test = require_test_at_cursor()
-    if not test then return end
-
-    run_test("--exact", test.name, unpack(args or {}))
+    run_testit(unpack(args or {}))
 end
 
 ---@param args string[]?
-function M.run_all(args)
-    run_test(unpack(args or {}))
+function M.run_this(args)
+    local test = require_test_at_cursor()
+    if not test then return end
+
+    run_testit("--exact", test.name, unpack(args or {}))
 end
 
 function M.run_last()
@@ -329,15 +329,23 @@ function M.run_last()
         vim.notify("no last test")
         return
     end
-    run_test(unpack(last_test_args))
+    run_testit(unpack(last_test_args))
 end
 
 ---@param args string[]?
 ---@return fun()
-function M.map_run(args)
+function M.map_run_this(args)
     return function()
-        M.run(args)
+        M.run_this(args)
     end
+end
+
+function M.clean()
+    run_testit("clean")
+end
+
+function M.undangle()
+    run_testit("undangle")
 end
 
 local cli_args = {
@@ -368,7 +376,7 @@ local function complete_command(arglead, line)
     if #args == 0 then
         local cmds = {
             "run",
-            "run-all",
+            "run-this",
             "run-last",
             "clean",
             "undangle",
@@ -387,7 +395,7 @@ local function complete_command(arglead, line)
             :filter(function(arg) return vim.startswith(arg, arglead) end)
             :filter(function(arg) return not vim.tbl_contains(args, arg) end)
             :totable()
-    elseif cmd == "run-all" then
+    elseif cmd == "run-this" then
         return vim.iter(cli_args)
             :filter(function(arg) return vim.startswith(arg, arglead) end)
             :filter(function(arg) return not vim.tbl_contains(args, arg) end)
@@ -419,15 +427,15 @@ local function exec_command(params)
     if cmd == "run" then
         local args = words:totable()
         M.run(args)
-    elseif cmd == "run-all" then
+    elseif cmd == "run-this" then
         local args = words:totable()
-        M.run_all(args)
+        M.run_this(args)
     elseif cmd == "run-last" then
         M.run_last()
     elseif cmd == "clean" then
-        M.run({ "clean" })
+        M.clean()
     elseif cmd == "undangle" then
-        M.run({ "undangle" })
+        M.undangle()
     elseif cmd == "open-render" then
         local prg = words:next()
         if not cfg.programs[prg] then
