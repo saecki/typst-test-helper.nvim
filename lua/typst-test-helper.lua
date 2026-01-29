@@ -370,6 +370,8 @@ local function complete_command(arglead, line)
             "run",
             "run-all",
             "run-last",
+            "clean",
+            "undangle",
             "open-render",
             "open-html",
             "open-pdftags",
@@ -422,6 +424,10 @@ local function exec_command(params)
         M.run_all(args)
     elseif cmd == "run-last" then
         M.run_last()
+    elseif cmd == "clean" then
+        M.run({ "clean" })
+    elseif cmd == "undangle" then
+        M.run({ "undangle" })
     elseif cmd == "open-render" then
         local prg = words:next()
         if not cfg.programs[prg] then
