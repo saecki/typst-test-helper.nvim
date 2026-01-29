@@ -382,17 +382,17 @@ local function complete_command(arglead, line)
             :totable()
     end
 
-    if cmd == "run-test" then
+    if cmd == "run" then
         return vim.iter(cli_args)
             :filter(function(arg) return vim.startswith(arg, arglead) end)
             :filter(function(arg) return not vim.tbl_contains(args, arg) end)
             :totable()
-    elseif cmd == "run-all-test" then
+    elseif cmd == "run-all" then
         return vim.iter(cli_args)
             :filter(function(arg) return vim.startswith(arg, arglead) end)
             :filter(function(arg) return not vim.tbl_contains(args, arg) end)
             :totable()
-    elseif cmd == "run-last-test" then
+    elseif cmd == "run-last" then
         return {}
     elseif cmd == "open-render" then
         if #args == 1 then
