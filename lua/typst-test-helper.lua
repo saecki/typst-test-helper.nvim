@@ -382,6 +382,7 @@ local function complete_command(arglead, line)
             "run-last",
             "clean",
             "undangle",
+            "open-report",
             "open-render",
             "open-html",
             "open-pdftags",
@@ -438,6 +439,8 @@ local function exec_command(params)
         M.clean()
     elseif cmd == "undangle" then
         M.undangle()
+    elseif cmd == "open-report" then
+        vim.ui.open("tests/store/report.html")
     elseif cmd == "open-render" then
         local prg = words:next()
         if not cfg.programs[prg] then
