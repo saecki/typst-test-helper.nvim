@@ -50,6 +50,8 @@ local function run_testit(...)
         term_win = vim.api.nvim_get_current_win()
     end
     vim.cmd.term(cmd)
+    -- Keep scrolling with the command output.
+    vim.cmd.normal("G")
 end
 
 ---@param name string
