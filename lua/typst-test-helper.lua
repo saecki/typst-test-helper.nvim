@@ -2,8 +2,10 @@
 ---@field line_idx integer
 ---@field line_len integer
 ---@field name string
+---@field eval boolean?
 ---@field paged boolean?
 ---@field html boolean?
+---@field pdf boolean?
 ---@field pdftags boolean?
 ---@field errors Error[]
 
@@ -57,7 +59,7 @@ end
 ---@param name string
 ---@return string
 ---@return string
-local function image_paths(name)
+local function render_paths(name)
     local root_dir = vim.fs.root(0, ".git")
     local ref_path = vim.fs.joinpath(root_dir, string.format("tests/ref/render/%s.png", name))
     local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/render/%s.png", name))
@@ -84,11 +86,20 @@ local function pdftags_paths(name)
     return ref_path, live_path
 end
 
+-- TODO: read hashes.txt and get path to old live output.
 ---@param name string
 ---@return string
 local function svg_path(name)
     local root_dir = vim.fs.root(0, ".git")
     local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/svg/%s.svg", name))
+    return live_path
+end
+
+---@param name string
+---@return string
+local function pdf_path(name)
+    local root_dir = vim.fs.root(0, ".git")
+    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/pdf/%s.pdf", name))
     return live_path
 end
 
@@ -247,7 +258,7 @@ function M.open_render(cmd)
     local test = require_test_at_cursor()
     if not test then return end
 
-    local ref_path, live_path = image_paths(test.name)
+    local ref_path, live_path = render_paths(test.name)
 
     if type(cmd) == "string" then
         cmd = vim.deepcopy(cfg.programs[cmd])
@@ -294,7 +305,23 @@ function M.open_html()
     if not test then return end
 
     local ref_path, live_path = html_paths(test.name)
+    vim.ui.open(live_path)
+end
+
+function M.read_html()
+    local test = require_test_at_cursor()
+    if not test then return end
+
+    local ref_path, live_path = html_paths(test.name)
     open_diff(ref_path, live_path)
+end
+
+function M.open_pdf()
+    local test = require_test_at_cursor()
+    if not test then return end
+
+    local live_path = pdf_path(test.name)
+    vim.ui.open(live_path)
 end
 
 function M.open_pdftags()
@@ -305,12 +332,20 @@ function M.open_pdftags()
     open_diff(ref_path, live_path)
 end
 
-function M.open_svg()
+function M.read_svg()
     local test = require_test_at_cursor()
     if not test then return end
 
     local live_path = svg_path(test.name)
     open_split(live_path)
+end
+
+function M.open_svg()
+    local test = require_test_at_cursor()
+    if not test then return end
+
+    local live_path = svg_path(test.name)
+    vim.ui.open(live_path)
 end
 
 ---@param args string[]?
@@ -383,10 +418,14 @@ local function complete_command(arglead, line)
             "clean",
             "undangle",
             "open-report",
+
             "open-render",
-            "open-html",
-            "open-pdftags",
             "open-svg",
+            "read-svg",
+            "open-pdf",
+            "open-pdftags",
+            "open-html",
+            "read-html",
         }
         return vim.iter(cmds)
             :filter(function(c) return vim.startswith(c, arglead) end)
@@ -448,12 +487,18 @@ local function exec_command(params)
             return
         end
         M.open_render(prg)
-    elseif cmd == "open-html" then
-        M.open_html()
-    elseif cmd == "open-pdftags" then
-        M.open_pdftags()
     elseif cmd == "open-svg" then
         M.open_svg()
+    elseif cmd == "read-svg" then
+        M.read_svg()
+    elseif cmd == "open-pdf" then
+        M.open_pdf()
+    elseif cmd == "open-pdftags" then
+        M.open_pdftags()
+    elseif cmd == "open-html" then
+        M.open_html()
+    elseif cmd == "read-html" then
+        M.read_html()
     else
         print(string.format("unknown sub command `%s`", cmd))
     end
