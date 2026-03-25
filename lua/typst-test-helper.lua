@@ -2,6 +2,7 @@
 ---@field line_idx integer
 ---@field line_len integer
 ---@field name string
+---@field bundle boolean?
 ---@field eval boolean?
 ---@field paged boolean?
 ---@field html boolean?
@@ -134,7 +135,9 @@ local function update(buf)
             -- 1-based things...
             local end_col = col + end_pos - 1
 
-            if attr == "eval" then
+            if attr == "bundle" then
+                test.bundle = true
+            elseif attr == "eval" then
                 test.eval = true
             elseif attr == "paged" then
                 test.paged = true
