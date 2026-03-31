@@ -327,7 +327,7 @@ function M.open_pdf()
     vim.ui.open(live_path)
 end
 
-function M.open_pdftags()
+function M.read_pdftags()
     local test = require_test_at_cursor()
     if not test then return end
 
@@ -426,7 +426,7 @@ local function complete_command(arglead, line)
             "open-svg",
             "read-svg",
             "open-pdf",
-            "open-pdftags",
+            "read-pdftags",
             "open-html",
             "read-html",
         }
@@ -496,8 +496,8 @@ local function exec_command(params)
         M.read_svg()
     elseif cmd == "open-pdf" then
         M.open_pdf()
-    elseif cmd == "open-pdftags" then
-        M.open_pdftags()
+    elseif cmd == "read-pdftags" then
+        M.read_pdftags()
     elseif cmd == "open-html" then
         M.open_html()
     elseif cmd == "read-html" then
