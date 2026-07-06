@@ -153,6 +153,8 @@ local function update(buf)
                 -- ignored for now
             elseif attr == "empty" then
                 -- ignored for now
+            elseif attr == "features" then
+                -- ignored for now
             else
                 table.insert(test.errors, {
                     msg = string.format("unknown attribute `%s`", attr),
