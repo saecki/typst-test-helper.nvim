@@ -21,6 +21,9 @@ end
 
 tth.setup({
     on_attach = on_attach,
+    -- Set which program to use, when no explicit program is passed to
+    -- `open_render` or `open_svg`.
+    default_program = "my-program",
     programs = {
         -- Define custom commands to open two images in an external program.
         -- The two image paths will be appended to the command.
@@ -30,6 +33,8 @@ tth.setup({
 
 -- Your custom command can then be used like this.
 tth.open_render("my-program")
+-- Or like this, because it has been set as the default.
+tth.open_render()
 ```
 
 ## Command

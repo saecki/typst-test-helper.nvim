@@ -22,6 +22,7 @@
 local M = {}
 
 local cfg = {
+    default_program = "identity",
     programs = {
         identity = { "flatpak", "run", "--file-forwarding", "org.gnome.gitlab.YaLTeR.Identity", "@@" },
     }
@@ -57,6 +58,24 @@ local function run_testit(...)
     vim.cmd.normal("G")
 end
 
+-- Read the `hashes.txt` of the `format` and get path to old live output.
+---@param root_path string
+---@param format string
+---@param name string
+---@param extension string?
+---@return string?
+local function hash_ref_path(root_path, format, name, extension)
+    local hashes_path = vim.fs.joinpath(root_path, string.format("tests/ref/%s/hashes.txt", format))
+    for line in io.lines(hashes_path) do
+        local n = string.sub(line, 34)
+        if name == n then
+            local hash = string.sub(line, 1, 32)
+            local path = string.format("tests/store/by-hash/%s_%s.%s", hash, name, extension or format)
+            return vim.fs.joinpath(root_dir, path)
+        end
+    end
+end
+
 ---@param name string
 ---@return string
 ---@return string
@@ -68,40 +87,43 @@ local function render_paths(name)
 end
 
 ---@param name string
+---@return string?
 ---@return string
----@return string
-local function html_paths(name)
+local function svg_paths(name)
     local root_dir = vim.fs.root(0, ".git")
-    local ref_path = vim.fs.joinpath(root_dir, string.format("tests/ref/html/%s.html", name))
-    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/html/%s.html", name))
+    local ref_path = hash_ref_path(root_dir, "svg", name)
+    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/svg/%s.svg", name))
     return ref_path, live_path
 end
 
 ---@param name string
+---@return string?
 ---@return string
+local function pdf_paths(name)
+    local root_dir = vim.fs.root(0, ".git")
+    local ref_path = hash_ref_path(root_dir, "pdf", name)
+    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/pdf/%s.pdf", name))
+    return ref_path, live_path
+end
+
+---@param name string
+---@return string?
 ---@return string
 local function pdftags_paths(name)
     local root_dir = vim.fs.root(0, ".git")
-    local ref_path = vim.fs.joinpath(root_dir, string.format("tests/ref/pdftags/%s.yml", name))
+    local ref_path = hash_ref_path(root_dir, "pdftags", name, "yml")
     local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/pdftags/%s.yml", name))
     return ref_path, live_path
 end
 
--- TODO: read hashes.txt and get path to old live output.
 ---@param name string
+---@return string?
 ---@return string
-local function svg_path(name)
+local function html_paths(name)
     local root_dir = vim.fs.root(0, ".git")
-    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/svg/%s.svg", name))
-    return live_path
-end
-
----@param name string
----@return string
-local function pdf_path(name)
-    local root_dir = vim.fs.root(0, ".git")
-    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/pdf/%s.pdf", name))
-    return live_path
+    local ref_path = hash_ref_path(root_dir, "html", name)
+    local live_path = vim.fs.joinpath(root_dir, string.format("tests/store/html/%s.html", name))
+    return ref_path, live_path
 end
 
 ---@param buf integer
@@ -258,28 +280,6 @@ local function require_test_at_cursor()
     vim.notify("no typst test found at cursor location")
 end
 
----@param cmd string|string[]
-function M.open_render(cmd)
-    local test = require_test_at_cursor()
-    if not test then return end
-
-    local ref_path, live_path = render_paths(test.name)
-
-    if type(cmd) == "string" then
-        cmd = vim.deepcopy(cfg.programs[cmd])
-    end
-    table.insert(cmd, ref_path)
-    table.insert(cmd, live_path)
-    vim.system(cmd, { detach = true })
-end
-
----@param cmd string|string[]
-function M.map_open_render(cmd)
-    return function()
-        M.open_render(cmd)
-    end
-end
-
 ---@param path string
 local function open_split(path)
     if split_win and vim.api.nvim_win_is_valid(split_win) then
@@ -291,9 +291,13 @@ local function open_split(path)
     end
 end
 
----@param ref_path string
+---@param ref_path string?
 ---@param live_path string
 local function open_diff(ref_path, live_path)
+    if not ref_path then
+        return open_split(live_path)
+    end
+
     vim.cmd.diffoff({ bang = true })
 
     local cur_win = vim.api.nvim_get_current_win()
@@ -305,11 +309,51 @@ local function open_diff(ref_path, live_path)
     vim.api.nvim_set_current_win(cur_win)
 end
 
+---@param prg string?
+---@param ref_path string?
+---@param live_path string
+function open_image_diff(prg, ref_path, live_path)
+    if not prg then
+        prg = cfg.default_program
+    end
+
+    local cmd = vim.deepcopy(cfg.programs[prg])
+    if not cmd then
+        print(string.format("invalid program `%s`", prg))
+        return
+    end
+
+    if ref_path then
+        table.insert(cmd, ref_path)
+    end
+    table.insert(cmd, live_path)
+    vim.system(cmd, { detach = true })
+end
+
+---@param prg string?
+function M.open_render(prg)
+    local test = require_test_at_cursor()
+    if not test then return end
+
+    local ref_path, live_path = render_paths(test.name)
+    open_image_diff(prg, ref_path, live_path)
+end
+
+---@param cmd string?
+function M.map_open_render(cmd)
+    return function()
+        M.open_render(cmd)
+    end
+end
+
 function M.open_html()
     local test = require_test_at_cursor()
     if not test then return end
 
     local ref_path, live_path = html_paths(test.name)
+    if ref_path then
+        vim.ui.open(ref_path)
+    end
     vim.ui.open(live_path)
 end
 
@@ -325,7 +369,11 @@ function M.open_pdf()
     local test = require_test_at_cursor()
     if not test then return end
 
-    local live_path = pdf_path(test.name)
+    -- TODO:
+    local ref_path, live_path = pdf_paths(test.name)
+    if ref_path then
+        vim.ui.open(ref_path)
+    end
     vim.ui.open(live_path)
 end
 
@@ -341,16 +389,17 @@ function M.read_svg()
     local test = require_test_at_cursor()
     if not test then return end
 
-    local live_path = svg_path(test.name)
-    open_split(live_path)
+    local ref_path, live_path = svg_paths(test.name)
+    open_diff(ref_path, live_path)
 end
 
-function M.open_svg()
+---@param prg string?
+function M.open_svg(prg)
     local test = require_test_at_cursor()
     if not test then return end
 
-    local live_path = svg_path(test.name)
-    vim.ui.open(live_path)
+    local ref_path, live_path = svg_paths(test.name)
+    open_image_diff(prg, ref_path, live_path)
 end
 
 ---@param args string[]?
@@ -486,14 +535,9 @@ local function exec_command(params)
     elseif cmd == "open-report" then
         vim.ui.open("tests/store/report.html")
     elseif cmd == "open-render" then
-        local prg = words:next()
-        if not cfg.programs[prg] then
-            print(string.format("invalid program `%s`", prg))
-            return
-        end
-        M.open_render(prg)
+        M.open_render(words:next())
     elseif cmd == "open-svg" then
-        M.open_svg()
+        M.open_svg(words:next())
     elseif cmd == "read-svg" then
         M.read_svg()
     elseif cmd == "open-pdf" then
